@@ -7,6 +7,8 @@ const feePaymentController = require('../controllers/fees/feePaymentController')
 
 // Generate monthly invoices (bulk)
 router.post('/invoices/generate-monthly', feeInvoiceController.generateMonthlyInvoices);
+router.post('/invoices/generate-annually', feeInvoiceController.generateAnnualInvoices);
+
 
 // Create invoice for specific student
 router.post('/invoices/student', feeInvoiceController.createStudentInvoice);

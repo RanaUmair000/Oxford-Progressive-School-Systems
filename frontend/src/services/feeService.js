@@ -5,6 +5,12 @@ const API_URL = `${apiUrl}/api/fees`;
 
 // ========== Invoice APIs ==========
 
+
+export const generateAnnualInvoices = async (data) => {
+  const response = await axios.post(`${API_URL}/invoices/generate-annually`, data);
+  return response.data;
+};
+
 export const generateMonthlyInvoices = async (data) => {
   const response = await axios.post(`${API_URL}/invoices/generate-monthly`, data);
   return response.data;

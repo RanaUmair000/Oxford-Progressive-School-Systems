@@ -38,7 +38,7 @@ const feeInvoiceSchema = new mongoose.Schema({
   },
   invoiceType: {
     type: String,
-    enum: ['monthly', 'event', 'manual'],
+    enum: ['annual', 'stock_sale', 'monthly', 'event', 'manual'],
     required: true,
     index: true
   },

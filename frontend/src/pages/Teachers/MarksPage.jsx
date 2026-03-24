@@ -34,6 +34,10 @@ function autoGrade(obtained, total) {
 }
 
 export default function MarksPage() {
+  const [view, setView] = useState('list'); // 'list' | 'entry'
+  const [examsList, setExamsList] = useState([]);
+  const [examsLoading, setExamsLoading] = useState(false);
+  // ... all your existing state stays the same
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -72,50 +76,50 @@ export default function MarksPage() {
   }, [selectedClass]);
 
   useEffect(() => {
-  if (!selectedClass || !selectedCourse || !examTitle || !examDate) return;
+    if (!selectedClass || !selectedCourse || !examTitle || !examDate) return;
 
-  const fetchExistingMarks = async () => {
-    try {
-      const res = await getMarksByClass(selectedClass, {
-        courseId: selectedCourse,
-        examTitle,
-        examDate,
-        academicYear: localStorage.getItem('academicYear') || ''
-      });
-
-      const existingMarks = res.data.data;
-
-      if (existingMarks.length > 0) {
-        // ✅ Marks already exist → populate form
-        const updated = {};
-        existingMarks.forEach(m => {
-          updated[m.studentId._id] = {
-            obtained: m.marksObtained,
-            remarks: m.remarks || '',
-          };
+    const fetchExistingMarks = async () => {
+      try {
+        const res = await getMarksByClass(selectedClass, {
+          courseId: selectedCourse,
+          examTitle,
+          examDate,
+          academicYear: localStorage.getItem('academicYear') || ''
         });
 
-        setMarks(updated);
-        setTotalMarks(existingMarks[0].totalMarks);
+        const existingMarks = res.data.data;
 
-        showToast('Existing marks loaded', 'success');
-      } else {
-        // ❌ No marks → reset empty
-        const empty = {};
-        students.forEach(st => {
-          empty[st._id] = { obtained: '', remarks: '' };
-        });
-        setMarks(empty);
+        if (existingMarks.length > 0) {
+          // ✅ Marks already exist → populate form
+          const updated = {};
+          existingMarks.forEach(m => {
+            updated[m.studentId._id] = {
+              obtained: m.marksObtained,
+              remarks: m.remarks || '',
+            };
+          });
+
+          setMarks(updated);
+          setTotalMarks(existingMarks[0].totalMarks);
+
+          showToast('Existing marks loaded', 'success');
+        } else {
+          // ❌ No marks → reset empty
+          const empty = {};
+          students.forEach(st => {
+            empty[st._id] = { obtained: '', remarks: '' };
+          });
+          setMarks(empty);
+        }
+
+      } catch (err) {
+        console.error(err);
       }
+    };
 
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    fetchExistingMarks();
 
-  fetchExistingMarks();
-
-}, [selectedClass, selectedCourse, examTitle, examDate]);
+  }, [selectedClass, selectedCourse, examTitle, examDate]);
 
   const coursesForClass = selectedClass
     ? (classes.find(c => c.classId === selectedClass)?.courses || [])
@@ -124,6 +128,55 @@ export default function MarksPage() {
   const setMark = (studentId, field, value) => {
     setMarks(prev => ({ ...prev, [studentId]: { ...prev[studentId], [field]: value } }));
   };
+
+  // Fetch all marks grouped by exam for the selected class
+  const fetchExamsList = async (classId) => {
+    if (!classId) return;
+    setExamsLoading(true);
+    try {
+      const res = await getMarksByClass(classId, {
+        academicYear: localStorage.getItem('academicYear') || ''
+      });
+      // Group by examTitle + courseId
+      const grouped = {};
+      res.data.data.forEach(m => {
+        const key = `${m.examTitle}_${m.courseId?._id}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            examTitle: m.examTitle,
+            examType: m.examType,
+            examDate: m.examDate,
+            courseId: m.courseId?._id,
+            courseName: m.courseId?.name,
+            totalMarks: m.totalMarks,
+            count: 0,
+            avgMarks: 0,
+            totalObtained: 0,
+          };
+        }
+        grouped[key].count++;
+        grouped[key].totalObtained += m.marksObtained;
+      });
+
+      const list = Object.values(grouped).map(g => ({
+        ...g,
+        avgMarks: (g.totalObtained / g.count).toFixed(1),
+        avgPct: Math.round((g.totalObtained / (g.count * g.totalMarks)) * 100),
+      }));
+
+      setExamsList(list);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExamsLoading(false);
+    }
+  };
+
+  // Call fetchExamsList when class changes
+  useEffect(() => {
+    if (selectedClass) fetchExamsList(selectedClass);
+  }, [selectedClass]);
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -157,202 +210,338 @@ export default function MarksPage() {
     }
   };
 
+  // Load existing exam into form when clicking Edit
+  const handleEditExam = (exam) => {
+    setSelectedCourse(exam.courseId);
+    setExamTitle(exam.examTitle);
+    setExamType(exam.examType);
+    setExamDate(exam.examDate ? exam.examDate.split('T')[0] : '');
+    setTotalMarks(exam.totalMarks);
+    setView('entry');
+  };
+
   const totalFilled = Object.values(marks).filter(m => m.obtained !== '').length;
   const avgMarks = totalFilled > 0
     ? (Object.values(marks).reduce((sum, m) => sum + (Number(m.obtained) || 0), 0) / totalFilled).toFixed(1)
     : 0;
-
   return (
     <div style={{ padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
-      {toast && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 999,
-          padding: '12px 20px', borderRadius: 10,
-          background: toast.type === 'error' ? '#FEE2E2' : '#D1FAE5',
-          color: toast.type === 'error' ? '#EF4444' : '#10B981',
-          fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
-        }}>
-          {toast.type === 'error' ? '❌' : '✅'} {toast.msg}
-        </div>
-      )}
+      {/* Toast - keep existing */}
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C2434', margin: 0 }}>Marks Entry</h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>Enter exam and assessment marks</p>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C2434', margin: 0 }}>Marks Entry</h1>
+          <p style={{ color: '#64748b', margin: '4px 0 0' }}>Enter and manage exam marks</p>
+        </div>
+        {view === 'list' ? (
+          <button onClick={() => setView('entry')} style={{
+            padding: '10px 20px', borderRadius: 8, border: 'none',
+            background: '#3C50E0', color: '#fff', fontWeight: 700, cursor: 'pointer'
+          }}>
+            + Add Marks
+          </button>
+        ) : (
+          <button onClick={() => setView('list')} style={{
+            padding: '10px 20px', borderRadius: 8, border: '1px solid #E2E8F0',
+            background: '#fff', color: '#1C2434', fontWeight: 700, cursor: 'pointer'
+          }}>
+            ← Back to List
+          </button>
+        )}
       </div>
 
-      <form onSubmit={handleSubmit}>
-        {/* Controls */}
-        <div style={{
-          background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
-          padding: 20, marginBottom: 20
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-            <div>
-              <label style={labelStyle}>Exam Date</label>
-              <input type="date" style={inputStyle} value={examDate}
-                onChange={e => setExamDate(e.target.value)} />
-            </div>
-            <div>
-              <label style={labelStyle}>Class *</label>
-              <select required style={inputStyle} value={selectedClass}
-                onChange={e => { setSelectedClass(e.target.value); setSelectedCourse(''); }}>
-                <option value="">Select class</option>
-                {classes.map(c => (
-                  <option key={c.classId} value={c.classId}>
-                    {c.className} {c.section ? `(${c.section})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Course *</label>
-              <select required style={inputStyle} value={selectedCourse}
-                onChange={e => setSelectedCourse(e.target.value)}>
-                <option value="">Select course</option>
-                {coursesForClass.map(c => (
-                  <option key={c._id} value={c._id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Exam Title *</label>
-              <input required style={inputStyle} value={examTitle}
-                onChange={e => setExamTitle(e.target.value)}
-                placeholder="e.g., Mid Term 1" />
-            </div>
-            <div>
-              <label style={labelStyle}>Exam Type</label>
-              <select style={inputStyle} value={examType} onChange={e => setExamType(e.target.value)}>
-                {EXAM_TYPES.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={labelStyle}>Total Marks</label>
-              <input type="number" style={inputStyle} value={totalMarks} min={1}
-                onChange={e => setTotalMarks(e.target.value)} />
-            </div>
-            
+      {/* Class selector - always visible */}
+      <div style={{
+        background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+        padding: 20, marginBottom: 20
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+          <div>
+            <label style={labelStyle}>Class *</label>
+            <select style={inputStyle} value={selectedClass}
+              onChange={e => { setSelectedClass(e.target.value); setSelectedCourse(''); setExamsList([]); }}>
+              <option value="">Select class</option>
+              {classes.map(c => (
+                <option key={c.classId} value={c.classId}>
+                  {c.className} {c.section ? `(${c.section})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
+      </div>
 
-        {/* Stats bar */}
-        {students.length > 0 && (
+      {/* LIST VIEW */}
+      {view === 'list' && (
+        <ExamsList
+          exams={examsList}
+          loading={examsLoading}
+          selectedClass={selectedClass}
+          onEdit={handleEditExam}
+        />
+      )}
+
+      {/* ENTRY VIEW - your existing form, just wrapped */}
+      {view === 'entry' && (
+        <form onSubmit={handleSubmit}>
+          {/* Controls - remove the class select from here since it's above now */}
           <div style={{
-            display: 'flex', gap: 14, marginBottom: 16, flexWrap: 'wrap'
+            background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+            padding: 20, marginBottom: 20
           }}>
-            {[
-              { label: 'Students', val: students.length, color: '#3C50E0' },
-              { label: 'Filled', val: `${totalFilled}/${students.length}`, color: '#10B981' },
-              { label: 'Class Avg', val: `${avgMarks}/${totalMarks}`, color: '#F59E0B' },
-            ].map(stat => (
-              <div key={stat.label} style={{
-                padding: '8px 16px', borderRadius: 8, background: '#fff',
-                border: '1px solid #E2E8F0', fontSize: 13
-              }}>
-                <span style={{ color: '#94a3b8' }}>{stat.label}: </span>
-                <span style={{ fontWeight: 700, color: stat.color }}>{stat.val}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
+              <div>
+                <label style={labelStyle}>Course *</label>
+                <select required style={inputStyle} value={selectedCourse}
+                  onChange={e => setSelectedCourse(e.target.value)}>
+                  <option value="">Select course</option>
+                  {coursesForClass.map(c => (
+                    <option key={c._id} value={c._id}>{c.name}</option>
+                  ))}
+                </select>
               </div>
-            ))}
-          </div>
-        )}
-
-        {/* Marks Table */}
-        {selectedClass && (
-          <div style={{
-            background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden'
-          }}>
-            <div style={{
-              display: 'grid', gridTemplateColumns: '60px 1fr 160px 80px 160px',
-              padding: '10px 20px', background: '#F7F9FC',
-              fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '.5px', textTransform: 'uppercase'
-            }}>
-              <div>ROLL</div><div>STUDENT</div><div>MARKS OBTAINED</div><div>GRADE</div><div>REMARKS</div>
+              <div>
+                <label style={labelStyle}>Exam Title *</label>
+                <input required style={inputStyle} value={examTitle}
+                  onChange={e => setExamTitle(e.target.value)} placeholder="e.g., Mid Term 1" />
+              </div>
+              <div>
+                <label style={labelStyle}>Exam Type</label>
+                <select style={inputStyle} value={examType} onChange={e => setExamType(e.target.value)}>
+                  {EXAM_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>Exam Date</label>
+                <input type="date" style={inputStyle} value={examDate}
+                  onChange={e => setExamDate(e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Total Marks</label>
+                <input type="number" style={inputStyle} value={totalMarks} min={1}
+                  onChange={e => setTotalMarks(e.target.value)} />
+              </div>
             </div>
+          </div>
 
-            {loading ? (
-              <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading students...</div>
-            ) : students.length === 0 ? (
-              <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No students found</div>
-            ) : (
-              students.map((student, i) => {
-                const obtained = marks[student._id]?.obtained;
-                const grade = obtained !== '' ? autoGrade(Number(obtained), Number(totalMarks)) : '';
-                const pct = obtained !== '' ? Math.round((Number(obtained) / Number(totalMarks)) * 100) : null;
-                const isOver = obtained !== '' && Number(obtained) > Number(totalMarks);
+          {/* Stats bar + Marks Table — keep your existing code exactly as is */}
+          {/* ... */}
+          {/* Stats bar */}
+          {students.length > 0 && (
+            <div style={{
+              display: 'flex', gap: 14, marginBottom: 16, flexWrap: 'wrap'
+            }}>
+              {[
+                { label: 'Students', val: students.length, color: '#3C50E0' },
+                { label: 'Filled', val: `${totalFilled}/${students.length}`, color: '#10B981' },
+                { label: 'Class Avg', val: `${avgMarks}/${totalMarks}`, color: '#F59E0B' },
+              ].map(stat => (
+                <div key={stat.label} style={{
+                  padding: '8px 16px', borderRadius: 8, background: '#fff',
+                  border: '1px solid #E2E8F0', fontSize: 13
+                }}>
+                  <span style={{ color: '#94a3b8' }}>{stat.label}: </span>
+                  <span style={{ fontWeight: 700, color: stat.color }}>{stat.val}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
-                return (
-                  <div key={student._id} style={{
-                    display: 'grid', gridTemplateColumns: '60px 1fr 160px 80px 160px',
-                    padding: '12px 20px', alignItems: 'center',
-                    borderTop: '1px solid #EFF4FB',
-                    background: i % 2 === 0 ? '#fff' : '#FAFBFC'
-                  }}>
-                    <div style={{ fontWeight: 600, color: '#3C50E0', fontSize: 13 }}>{student.rollNumber}</div>
-                    <div style={{ fontWeight: 500, color: '#1C2434', fontSize: 14 }}>
-                      {student.firstName} {student.lastName}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <input
-                          type="number"
-                          min={0}
-                          max={totalMarks}
-                          value={marks[student._id]?.obtained || ''}
-                          onChange={e => setMark(student._id, 'obtained', e.target.value)}
-                          placeholder="0"
-                          style={{
-                            ...inputStyle,
-                            width: 80,
-                            border: isOver ? '1px solid #EF4444' : '1px solid #E2E8F0'
-                          }}
-                        />
-                        <span style={{ color: '#94a3b8', fontSize: 12 }}>/ {totalMarks}</span>
-                        {pct !== null && (
-                          <span style={{ fontSize: 11, color: '#94a3b8' }}>{pct}%</span>
+          {/* Marks Table */}
+          {selectedClass && (
+            <div style={{
+              background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden'
+            }}>
+              <div style={{
+                display: 'grid', gridTemplateColumns: '60px 1fr 160px 80px 160px',
+                padding: '10px 20px', background: '#F7F9FC',
+                fontSize: 11, fontWeight: 700, color: '#94a3b8', letterSpacing: '.5px', textTransform: 'uppercase'
+              }}>
+                <div>ROLL</div><div>STUDENT</div><div>MARKS OBTAINED</div><div>GRADE</div><div>REMARKS</div>
+              </div>
+
+              {loading ? (
+                <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>Loading students...</div>
+              ) : students.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: '#94a3b8' }}>No students found</div>
+              ) : (
+                students.map((student, i) => {
+                  const obtained = marks[student._id]?.obtained;
+                  const grade = obtained !== '' ? autoGrade(Number(obtained), Number(totalMarks)) : '';
+                  const pct = obtained !== '' ? Math.round((Number(obtained) / Number(totalMarks)) * 100) : null;
+                  const isOver = obtained !== '' && Number(obtained) > Number(totalMarks);
+
+                  return (
+                    <div key={student._id} style={{
+                      display: 'grid', gridTemplateColumns: '60px 1fr 160px 80px 160px',
+                      padding: '12px 20px', alignItems: 'center',
+                      borderTop: '1px solid #EFF4FB',
+                      background: i % 2 === 0 ? '#fff' : '#FAFBFC'
+                    }}>
+                      <div style={{ fontWeight: 600, color: '#3C50E0', fontSize: 13 }}>{student.rollNumber}</div>
+                      <div style={{ fontWeight: 500, color: '#1C2434', fontSize: 14 }}>
+                        {student.firstName} {student.lastName}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="number"
+                            min={0}
+                            max={totalMarks}
+                            value={marks[student._id]?.obtained || ''}
+                            onChange={e => setMark(student._id, 'obtained', e.target.value)}
+                            placeholder="0"
+                            style={{
+                              ...inputStyle,
+                              width: 80,
+                              border: isOver ? '1px solid #EF4444' : '1px solid #E2E8F0'
+                            }}
+                          />
+                          <span style={{ color: '#94a3b8', fontSize: 12 }}>/ {totalMarks}</span>
+                          {pct !== null && (
+                            <span style={{ fontSize: 11, color: '#94a3b8' }}>{pct}%</span>
+                          )}
+                        </div>
+                        {isOver && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 3 }}>Exceeds total</div>}
+                      </div>
+                      <div>
+                        {grade && (
+                          <span style={{
+                            padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 13,
+                            background: `${gradeColor[grade]}18`,
+                            color: gradeColor[grade]
+                          }}>{grade}</span>
                         )}
                       </div>
-                      {isOver && <div style={{ fontSize: 11, color: '#EF4444', marginTop: 3 }}>Exceeds total</div>}
+                      <div>
+                        <input
+                          style={{ ...inputStyle, width: '100%' }}
+                          value={marks[student._id]?.remarks || ''}
+                          onChange={e => setMark(student._id, 'remarks', e.target.value)}
+                          placeholder="Optional remarks"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      {grade && (
-                        <span style={{
-                          padding: '3px 10px', borderRadius: 6, fontWeight: 700, fontSize: 13,
-                          background: `${gradeColor[grade]}18`,
-                          color: gradeColor[grade]
-                        }}>{grade}</span>
-                      )}
-                    </div>
-                    <div>
-                      <input
-                        style={{ ...inputStyle, width: '100%' }}
-                        value={marks[student._id]?.remarks || ''}
-                        onChange={e => setMark(student._id, 'remarks', e.target.value)}
-                        placeholder="Optional remarks"
-                      />
-                    </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
 
-            {students.length > 0 && (
-              <div style={{
-                padding: '14px 20px', borderTop: '1px solid #E2E8F0',
-                display: 'flex', justifyContent: 'flex-end', gap: 10
-              }}>
-                <button type="submit" disabled={submitting} style={{
-                  padding: '10px 28px', borderRadius: 8, border: 'none',
-                  background: submitting ? '#94a3b8' : '#3C50E0',
-                  color: '#fff', fontWeight: 700, fontSize: 14, cursor: submitting ? 'not-allowed' : 'pointer'
+              {students.length > 0 && (
+                <div style={{
+                  padding: '14px 20px', borderTop: '1px solid #E2E8F0',
+                  display: 'flex', justifyContent: 'flex-end', gap: 10
                 }}>
-                  {submitting ? 'Saving...' : 'Save Marks'}
-                </button>
+                  <button type="submit" disabled={submitting} style={{
+                    padding: '10px 28px', borderRadius: 8, border: 'none',
+                    background: submitting ? '#94a3b8' : '#3C50E0',
+                    color: '#fff', fontWeight: 700, fontSize: 14, cursor: submitting ? 'not-allowed' : 'pointer'
+                  }}>
+                    {submitting ? 'Saving...' : 'Save Marks'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </form>
+      )}
+    </div>
+  );
+}
+
+function ExamsList({ exams, loading, selectedClass, onEdit }) {
+  if (!selectedClass) return (
+    <div style={{
+      background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+      padding: 60, textAlign: 'center', color: '#94a3b8'
+    }}>
+      Select a class to view marks
+    </div>
+  );
+
+  if (loading) return (
+    <div style={{
+      background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+      padding: 60, textAlign: 'center', color: '#94a3b8'
+    }}>
+      Loading exams...
+    </div>
+  );
+
+  if (exams.length === 0) return (
+    <div style={{
+      background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+      padding: 60, textAlign: 'center', color: '#94a3b8'
+    }}>
+      No marks entered yet for this class
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+      {exams.map((exam, i) => {
+        const avgGrade = autoGrade(exam.avgMarks, exam.totalMarks);
+        return (
+          <div key={i} style={{
+            background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+            padding: 20, display: 'flex', flexDirection: 'column', gap: 12
+          }}>
+            {/* Top row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, color: '#1C2434' }}>{exam.examTitle}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>{exam.courseName}</div>
               </div>
-            )}
+              <span style={{
+                padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                background: '#3C50E018', color: '#3C50E0'
+              }}>
+                {exam.examType}
+              </span>
+            </div>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{
+                flex: 1, background: '#F7F9FC', borderRadius: 8, padding: '8px 12px', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>STUDENTS</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#1C2434' }}>{exam.count}</div>
+              </div>
+              <div style={{
+                flex: 1, background: '#F7F9FC', borderRadius: 8, padding: '8px 12px', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>AVG MARKS</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: '#10B981' }}>
+                  {exam.avgMarks}/{exam.totalMarks}
+                </div>
+              </div>
+              <div style={{
+                flex: 1, background: '#F7F9FC', borderRadius: 8, padding: '8px 12px', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>AVG GRADE</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: gradeColor[avgGrade] || '#1C2434' }}>
+                  {avgGrade}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: 12, color: '#94a3b8' }}>
+                {exam.examDate ? new Date(exam.examDate).toLocaleDateString() : 'No date'}
+              </div>
+              <button onClick={() => onEdit(exam)} style={{
+                padding: '6px 14px', borderRadius: 7, border: '1px solid #3C50E0',
+                background: '#fff', color: '#3C50E0', fontWeight: 600,
+                fontSize: 13, cursor: 'pointer'
+              }}>
+                Edit Marks
+              </button>
+            </div>
           </div>
-        )}
-      </form>
+        );
+      })}
     </div>
   );
 }

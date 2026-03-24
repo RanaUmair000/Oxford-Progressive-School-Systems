@@ -760,7 +760,7 @@ export default function LoginPage() {
                 }
               </button>
             </form>
-2
+
             {/* Demo credentials */}
             <div className="demo-box">
               <div className="demo-label">🔑 Demo Credentials — Click to fill</div>

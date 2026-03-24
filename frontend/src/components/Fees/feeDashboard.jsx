@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FiDollarSign, FiUsers, FiCalendar, FiSearch, FiFileText, FiTrendingUp } from 'react-icons/fi';
 import Modal from '../Modal/modal';
+import GenerateAnnualModal from './Modals/generateAnnualModal';
 import GenerateMonthlyModal from './Modals/GenerateMonthlyModal';
 import CreateStudentInvoiceModal from './Modals/CreateStudentInvoiceModal';
 import CreateEventInvoiceModal from './Modals/CreateEventInvoiceModal';
@@ -43,6 +44,15 @@ const FeeDashboard = () => {
       color: 'from-blue-500 to-blue-600',
       hoverColor: 'hover:from-blue-600 hover:to-blue-700',
       action: () => setOpenModal('monthly')
+    },
+    {
+      id: 'annual',
+      title: 'Generate Annual Invoices',
+      description: 'Create annual fee invoices for classes or all students',
+      icon: FiCalendar,
+      color: 'from-blue-500 to-blue-600',
+      hoverColor: 'hover:from-blue-600 hover:to-blue-700',
+      action: () => setOpenModal('annual')
     },
     {
       id: 'student',
@@ -200,6 +210,10 @@ const FeeDashboard = () => {
       </div>
 
       {/* Modals */}
+      <Modal isOpen={openModal === 'annual'} onClose={() => setOpenModal(null)}>
+        <GenerateAnnualModal onClose={() => setOpenModal(null)} />
+      </Modal>
+
       <Modal isOpen={openModal === 'monthly'} onClose={() => setOpenModal(null)}>
         <GenerateMonthlyModal onClose={() => setOpenModal(null)} />
       </Modal>

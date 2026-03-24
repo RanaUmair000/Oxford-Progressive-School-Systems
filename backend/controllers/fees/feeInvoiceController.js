@@ -17,6 +17,134 @@ async function generateInvoiceNumber() {
   return `INV-${year}-${String(counter.seq).padStart(6, "0")}`;
 }
 
+/**
+ * POST /api/fees/generate-annual
+ *
+ * Body:
+ * {
+ *   students: [
+ *     { studentId, annualFee, discountAmount, totalAmount }
+ *   ],
+ *   year:         number     – e.g. 2026
+ *   dueDate:      string     – ISO date string
+ *   invoiceType:  string     – 'annual' | 'semi-annual' | 'quarterly' | 'custom'
+ *   discount:     number     – discount value (raw, for record keeping)
+ *   discountType: string     – 'percentage' | 'fixed'
+ *   description:  string     – optional note
+ * }
+ */
+
+exports.generateAnnualInvoices = async (req, res) => {
+  try {
+    const {
+      students,
+      year,
+      dueDate,
+      invoiceType   = 'annual',
+      discount      = 0,
+      discountType  = 'percentage',
+      description   = '',
+    } = req.body;
+
+    // ── Validation ────────────────────────────────────────────────────────
+    if (!students || !Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ message: 'No students provided' });
+    }
+    if (!dueDate) {
+      return res.status(400).json({ message: 'Due date is required' });
+    }
+
+    const invalidEntry = students.find(
+      (s) => !s.studentId || s.annualFee === undefined || s.totalAmount === undefined
+    );
+    if (invalidEntry) {
+      return res.status(400).json({ message: 'Each student entry must include studentId, annualFee, and totalAmount' });
+    }
+
+    // ── Reference date: Jan 1 of the given year ───────────────────────────
+    const invoiceYear = new Date(parseInt(year), 0, 1);
+
+    const typeLabel = {
+      'annual':      'Annual',
+      'semi-annual': 'Semi-Annual',
+      'quarterly':   'Quarterly',
+      'custom':      'Custom',
+    }[invoiceType] || 'Annual';
+
+    let created = 0;
+    let skipped = 0;
+
+    // ── Process each student ──────────────────────────────────────────────
+    for (const entry of students) {
+      const { studentId, annualFee, discountAmount, totalAmount } = entry;
+
+      // Skip students with no fee
+      if (!annualFee || annualFee <= 0) {
+        skipped++;
+        continue;
+      }
+
+      const student = await Student.findById(studentId).populate('class', 'name section fee');
+
+      if (!student) {
+        skipped++;
+        continue;
+      }
+
+      const invoiceNumber = await generateInvoiceNumber();
+
+      const invoiceTitle = `${student.class?.name || 'School'} - ${typeLabel} Fee ${year}`;
+
+      // Build fee items: one line for the annual fee, one for discount if any
+      const feeItems = [
+        {
+          title:  `${typeLabel} Tuition Fee`,
+          amount: annualFee,
+          description: `Monthly fee PKR ${student.class?.fee?.toLocaleString() || 0} × 12 months`,
+        },
+      ];
+
+      try {
+        await FeeInvoice.create({
+          student:      student._id,
+          class:        student.class?._id,
+          invoiceType,
+          title:        invoiceTitle,
+          year:         invoiceYear,
+          feeItems,
+          subtotal:     annualFee,
+          discount:     discountAmount || 0,
+          discountType,
+          totalAmount,
+          dueDate,
+          description,
+          invoiceNumber,
+        });
+
+        created++;
+      } catch (err) {
+        // Duplicate – invoice already exists for this student/year/type
+        if (err.code === 11000) {
+          skipped++;
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    return res.status(201).json({
+      message:           'Annual invoice generation completed',
+      studentsProcessed: students.length,
+      invoicesCreated:   created,
+      invoicesSkipped:   skipped,
+    });
+
+  } catch (error) {
+    console.error('generateAnnualInvoices error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 // Generate monthly invoices for a class or all classes
 exports.generateMonthlyInvoices = async (req, res) => {
   try {
@@ -25,39 +153,43 @@ exports.generateMonthlyInvoices = async (req, res) => {
       month,       // 1-12
       year,        // 2026
       dueDate,
-      feeItems
+      feeItems,
+      students
     } = req.body;
     const title = feeItems?.[0]?.title;
     const description = feeItems?.[0]?.description;
 
     const invoiceMonth = new Date(year, month - 1, 1);
 
-    // 🔹 Fetch students with class populated
-    const studentFilter =
-      classId === 'all'
-        ? { status: "Active" }
-        : { class: classId.toString(), status: "Active" };
-    console.log(studentFilter);
-    const students = await Student
-      .find(studentFilter)
-      .populate('class');
+
 
     console.log(students);
     if (!students.length) {
       return res.status(404).json({ message: 'No students found' });
     }
 
+    
+
     let created = 0;
     let skipped = 0;
 
-    for (const student of students) {
+    for (const studentId of students) {
+
+      const student = await Student.findById(studentId).populate('class');
+
       const invoiceNumber = await generateInvoiceNumber();
-      // 🔹 Ensure class & fee exist
-      if (!student.class || !student.class.fee) {
+
+      // Ensure class & fee exist
+      if (!student || !student.class || !student.class.fee) {
         skipped++;
         continue;
       }
-      //
+
+      if (student.feePlan === 'Annual') {
+        skipped++;
+        continue;
+      }
+
       const feeItems = [{
         title: 'Monthly Fee',
         amount: student.class.fee
@@ -81,7 +213,7 @@ exports.generateMonthlyInvoices = async (req, res) => {
 
       } catch (err) {
         if (err.code === 11000) {
-          skipped++; // duplicate monthly invoice
+          skipped++;
         } else {
           throw err;
         }
@@ -100,6 +232,8 @@ exports.generateMonthlyInvoices = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+
 
 // Create invoice for specific student
 exports.createStudentInvoice = async (req, res) => {

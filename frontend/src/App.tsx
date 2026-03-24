@@ -22,6 +22,17 @@ import Timeslots from './components/Timetable/TimeSlotManager';
 import TimetableBuilder from './components/Timetable/TimetableBuilder';
 import StudentTimetableWidget from './components/Timetable/StudentTimetableWidget.jsx';
 import TeacherTimetableWidget from './components/Timetable/TeacherTimetableWidget.jsx';
+import DiaryPage from './pages/Diary';
+import TeacherAttendanceAdmin from './pages/TeacherAttendanceAdminPage';
+
+import StockDashboard   from './components/Stocks/StockDashboard';
+import StockItemsList   from './components/Stocks/StockItemsList';
+import AddEditStockItem from './components/Stocks/AddEditStockItem';
+import SuppliersList    from './components/Stocks/SuppliersList';
+import AddEditSupplier  from './components/Stocks/AddEditSupplier';
+import PurchaseStock    from './components/Stocks/PurchaseStock';
+import SellItem         from './components/Stocks/SellItem';
+import SalesHistory     from './components/Stocks/SalesHistory';
 
 
 import Chart from './pages/Chart';
@@ -46,6 +57,7 @@ import NotificationsPage from './pages/Teachers/NotificationsPage';
 import ProfilePage from './pages/Teachers/ProfilePage';
 import Login from './pages/LoginPage.jsx';
 import ProtectedRoute from "./components/ProtectedRoute";
+import TeacherAttendancePage from "./pages/Teachers/teacherAttendancePage.jsx";
 
 function App() {
   const [loading, setLoading] = useState<boolean>(true);
@@ -281,6 +293,161 @@ function App() {
               </>
             }
           />
+          
+
+          //Stock Routes
+          <Route
+            path="/stock"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Stock Dashboard" />
+                  <StockDashboard />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/items"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <StockItemsList />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/items/add"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <AddEditStockItem />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/items/:id/edit"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <AddEditStockItem />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/suppliers"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <SuppliersList />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/suppliers/add"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <AddEditSupplier />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/suppliers/:id/edit"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <AddEditSupplier />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/purchase"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <PurchaseStock />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/sell"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <SellItem />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/stock/sales"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["admin"]}>
+
+                  <PageTitle title="Pay Salary | Oxoford Progressive" />
+                  <SalesHistory />
+                </ProtectedRoute>
+              </>
+            }
+          />
+
+          <Route
+            path="/teacherattendances"
+            element={
+              <>
+                <PageTitle title="Teacher Dashboard | School Management System" />
+                <TeacherAttendanceAdmin />
+              </>
+            }
+          />
+
+          <Route
+            path="/diary"
+            element={
+              <>
+                <ProtectedRoute allowedRoles={["teacher", "admin"]}>
+
+                  <PageTitle title="Diary | Oxoford Progressive" />
+                  <DiaryPage />
+                </ProtectedRoute>
+              </>
+            }
+          />
 
 
 
@@ -318,6 +485,16 @@ function App() {
           />
 
           <Route
+            path="/teacher/selfattendance"
+            element={
+              <>
+                <PageTitle title="Timetable | School Management System" />
+                <TeacherAttendancePage />
+              </>
+            }
+          />
+
+          <Route
             path="/teacher/attendance"
             element={
               <>
@@ -345,6 +522,7 @@ function App() {
                 <MarksPage />
               </>
             }
+
           />
 
           <Route

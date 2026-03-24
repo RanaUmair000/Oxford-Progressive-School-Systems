@@ -19,6 +19,10 @@ const {attendanceRouter} = require("./routes/attendanceRoutes.js");
 // Import routes
 const timetableRoutes = require('./routes/timetableRoutes');
 const authRoutes = require('./routes/authRoutes');
+const stockRoutes = require('./routes/stockRoutes');
+const diaryRoutes = require("./routes/diaryRoutes");
+const teacherAttendanceRoutes = require('./routes/teacherAttendanceRoutes');
+
 
 // Connect to database
 connectDB();
@@ -46,6 +50,10 @@ app.use("/api/fees", feeRoutes);
 app.use('/api/attendance', attendanceRouter);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/stock', stockRoutes);
+app.use("/api/diary", diaryRoutes);
+app.use('/api/teacher-attendance', teacherAttendanceRoutes);
+
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

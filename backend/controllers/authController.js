@@ -186,10 +186,10 @@ exports.login = async (req, res) => {
     const user = await Model.findOne({
       email: username.toLowerCase().trim(),
     });
-console.log("Selected Model:", Model.modelName);
-console.log("Searching for:", username.toLowerCase().trim());
-console.log("User found:", user);
-    if (!user) {
+    console.log("Selected Model:", Model.modelName);
+    console.log("Searching for:", username.toLowerCase().trim());
+    console.log("User found:", user);
+    if (!user) {  
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',

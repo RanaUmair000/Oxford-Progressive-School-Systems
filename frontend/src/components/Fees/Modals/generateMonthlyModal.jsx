@@ -3,10 +3,14 @@ import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { generateMonthlyInvoices } from '../../../services/feeService';
 import axios from 'axios';
 const apiUrl = import.meta.env.VITE_API_URL;
+const token = localStorage.getItem("token");
 
 const GenerateMonthlyModal = ({ onClose }) => {
   const [loading, setLoading] = useState(false);
   const [classes, setClasses] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [showCustomize, setShowCustomize] = useState(false);
   const [formData, setFormData] = useState({
     classId: 'all',
     month: new Date().getMonth() + 1,
@@ -14,6 +18,31 @@ const GenerateMonthlyModal = ({ onClose }) => {
     dueDate: '',
     feeItems: [{ title: 'Tuition Fee', amount: '', description: '' }]
   });
+
+  const fetchStudents = async (classId) => {
+    try {
+      const res = await axios.get(`${apiUrl}/api/students/getStudentByClass/${classId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+      console.log(res);
+      setStudents(res.data.data || []);
+      setSelectedStudents(res.data.data.map((s) => s._id)); // all checked by default
+    } catch (error) {
+      console.error("Failed to fetch students", error);
+    }
+  };
+
+  const toggleStudent = (studentId) => {
+    if (selectedStudents.includes(studentId)) {
+      setSelectedStudents(selectedStudents.filter((id) => id !== studentId));
+    } else {
+      setSelectedStudents([...selectedStudents, studentId]);
+    }
+  };
 
   useEffect(() => {
     fetchClasses();
@@ -68,7 +97,10 @@ const GenerateMonthlyModal = ({ onClose }) => {
 
     try {
       setLoading(true);
-      const response = await generateMonthlyInvoices(formData);
+      const response = await generateMonthlyInvoices({
+        ...formData,
+        students: selectedStudents
+      });
       alert(
         `Invoice generation completed\n\n` +
         `Created: ${response.invoicesCreated}\n` +
@@ -96,7 +128,15 @@ const GenerateMonthlyModal = ({ onClose }) => {
           </label>
           <select
             value={formData.classId}
-            onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+            onChange={(e) => {
+              const classId = e.target.value;
+
+              setFormData({ ...formData, classId });
+
+              if (classId !== "all") {
+                fetchStudents(classId);
+              }
+            }}
             className="w-full rounded border border-stroke bg-gray px-4 py-3 text-black focus:border-primary focus:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white"
             required
           >
@@ -108,6 +148,35 @@ const GenerateMonthlyModal = ({ onClose }) => {
             ))}
           </select>
         </div>
+        {formData.classId !== "all" && (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setShowCustomize(!showCustomize)}
+              className="text-primary font-medium"
+            >
+              Customize Invoice
+            </button>
+
+            {showCustomize && (
+              <div className="mt-3 max-h-60 overflow-y-auto rounded border p-3 dark:border-strokedark">
+                {students.map((student) => (
+                  <label
+                    key={student._id}
+                    className="flex items-center gap-2 mb-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedStudents.includes(student._id)}
+                      onChange={() => toggleStudent(student._id)}
+                    />
+                    {student.firstName} {student.lastName}
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Month and Year */}
         <div className="grid grid-cols-2 gap-4 mb-4">

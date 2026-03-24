@@ -24,12 +24,12 @@ const StudentModal = ({ onClose, student }) => {
 
         // 🔥 Only auto-fill fee when creating OR class actually changed
         if (selectedClass) {
-            setFee((prevFee) => {
-                if (isEditing && prevFee !== "") {
-                    return prevFee; // keep student's fee
-                }
-                return selectedClass.fee ?? "";
-            });
+            const newFee = selectedClass.fee ?? "";
+            setFee(newFee);
+            setFormData((prev) => ({
+                ...prev,
+                fee: newFee,  // ✅ add this
+            }));
         } else {
             setFee("");
         }
@@ -48,12 +48,15 @@ const StudentModal = ({ onClose, student }) => {
         rollNumber: "",
         class: "",
         fee: "",
+        registrationFee: "",
+        feePlan: "",
         academicYear: "",
         status: "Active",
         enrollmentDate: "",
         guardianName: "",
         guardianPhone: "",
         address: "",
+        generateInvoice: true,
     });
 
     useEffect(() => {
@@ -74,6 +77,8 @@ const StudentModal = ({ onClose, student }) => {
                 guardianName: student.guardian?.name || "",
                 guardianPhone: student.guardian?.phone || "",
                 address: student.guardian?.address || "",
+                fee: student.fee || "",
+                feePlan: student.feePlan || "",
             });
             setExistingProfilePic(student.profilePic || null);
             setExistingCnicPic(student.cnicPic || null);
@@ -109,12 +114,12 @@ const StudentModal = ({ onClose, student }) => {
 
         if (profilePic) data.append("profilePic", profilePic);
         if (cnicPic) data.append("cnicPic", cnicPic);
-
+        console.log(data);
+        console.log([...data.entries()]);
         const url = student
             ? `${apiUrl}/api/students/${student._id}`
             : `${apiUrl}/api/students`;
         const method = student ? "PUT" : "POST";
-        console.log([...data.entries()]);
         try {
             await fetch(url, {
                 method,
@@ -442,29 +447,6 @@ const StudentModal = ({ onClose, student }) => {
                                 </select>
                             </div>
 
-                            {/* Fee Input (shows only when class selected) */}
-                            {formData.class && (
-                                <div className="w-full xl:w-1/4">
-                                    <label className="mb-2.5 block text-black dark:text-white">
-                                        Fee
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={fee}
-                                        onChange={(e) => {
-                                            const value = e.target.value === "" ? "" : Number(e.target.value);
-                                            setFee(value);
-
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                fee: value,
-                                            }));
-                                        }}
-                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white"
-                                    />
-                                </div>
-                            )}
-
                             <div className="w-full xl:w-1/4">
                                 <label className="mb-2.5 block text-black dark:text-white">Academic Year *</label>
                                 <select
@@ -490,6 +472,64 @@ const StudentModal = ({ onClose, student }) => {
                                     <option value="Inactive">Inactive</option>
                                     <option value="Alumni">Alumni</option>
                                 </select>
+                            </div>
+                        </div>
+
+                        <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
+                            {/* Fee Input (shows only when class selected) */}
+                            {formData.class && (
+                                <div className="w-full xl:w-1/4">
+                                    <label className="mb-2.5 block text-black dark:text-white">
+                                        Fee
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={fee}
+                                        onChange={(e) => {
+                                            const value = e.target.value === "" ? "" : Number(e.target.value);
+                                            setFee(value);
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                fee: value,
+                                            }));
+                                        }}
+                                        className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white"
+                                    />
+                                </div>
+                            )}
+                            <div className="w-full xl:w-1/4">
+                                <label className="mb-2.5 block text-black dark:text-white">
+                                    Fee Plan
+                                </label>
+
+                                <select
+                                    value={formData.feePlan || ""}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+
+                                        setFormData((prev) => ({
+                                            ...prev,
+                                            feePlan: value,
+                                        }));
+                                    }}
+                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white"
+                                >
+                                    <option value="">Select Fee Plan</option>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Annual">Annual</option>
+                                </select>
+                            </div>
+                            <div className="w-full xl:w-1/4">
+                                <label className="mb-2.5 block text-black dark:text-white">
+                                    Registration Fee <span className="text-meta-1">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="registrationFee"          // change this to the actual field name
+                                    value={formData.registrationFee}
+                                    onChange={handleChange}
+                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                />
                             </div>
                         </div>
 
@@ -572,8 +612,22 @@ const StudentModal = ({ onClose, student }) => {
                             />
                         </div>
 
+                        <div className="mb-6 flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                name="generateInvoice"
+                                checked={formData.generateInvoice}
+                                onChange={handleChange}
+                                disabled={!!student}
+                                className="h-5 w-5 cursor-pointer disabled:cursor-not-allowed"
+                            />
+                            <label className="text-black dark:text-white font-medium">
+                                Generate Registration and Tuition Fee Invoice
+                            </label>
+                        </div>
+
+
                         <button
-                            disabled={loading}
                             className="flex w-full justify-center rounded bg-primary p-3 font-medium text-gray hover:bg-opacity-90"
                         >
                             {student ? "Update Student" : "Save Student"}

@@ -30,9 +30,25 @@ router.get(
 router.get(
   '/',
   authMiddleware,
-  authorizeRoles('admin'),
+  authorizeRoles('admin', 'teacher'),
   studentController.getAllStudents
 );
+
+
+router.get(
+  '/search',
+  authMiddleware,
+  authorizeRoles('admin'),
+  studentController.searchStudents
+);
+
+router.get(
+  '/annual',
+  authMiddleware,
+  authorizeRoles('admin'),
+  studentController.getAnnualStudents
+);
+
 
 router.get(
   '/:id',
@@ -70,5 +86,6 @@ router.delete(
   authorizeRoles('admin'),
   studentController.deleteStudent
 );
+
 
 module.exports = router;
