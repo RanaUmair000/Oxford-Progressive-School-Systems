@@ -21,12 +21,6 @@ const TableOne = ({ students }) => {
     setOpen(true);
   };
 
-  const handleView = (student) => {
-    setSelectedStudent(student);
-    setMode("view");
-    setOpen(true);
-  };
-
   const handleDelete = async (studentId) => {
     const confirmDelete = window.confirm("Are you sure you want to delete this student?");
     if (!confirmDelete) return;
@@ -139,15 +133,6 @@ const TableOne = ({ students }) => {
                       onClick={() => handleEdit(student)}
                       className="mr-2 rounded bg-blue-500 px-3 py-1 text-white hover:bg-blue-600"
                       title="Edit"
-                    >
-                      <FiEdit size={18} />
-                    </button>
-
-                    {/* View */}
-                    <button
-                      onClick={() => handleView(student)}
-                      className="mr-2 rounded bg-indigo-500 px-3 py-1 text-white hover:bg-indigo-600"
-                      title="View"
                     >
                       <FiEdit size={18} />
                     </button>
