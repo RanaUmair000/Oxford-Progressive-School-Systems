@@ -760,25 +760,7 @@ export default function LoginPage() {
                 }
               </button>
             </form>
-
-            {/* Demo credentials */}
-            <div className="demo-box">
-              <div className="demo-label">🔑 Demo Credentials — Click to fill</div>
-              <div className="demo-creds">
-                {DEMO_CREDS.map(c => (
-                  <div key={c.role} className="demo-row" onClick={() => fillDemo(c)} style={{ cursor: 'pointer', padding: '3px 0' }}>
-                    <span className="demo-role">
-                      {ROLES.find(r => r.id === c.role)?.icon} {c.role.charAt(0).toUpperCase() + c.role.slice(1)}
-                    </span>
-                    <div className="demo-vals">
-                      <span className="demo-tag">{c.username}</span>
-                      <span className="demo-tag">{c.password}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+            
             {/* Footer note */}
             <p style={{
               marginTop: 20, textAlign: 'center', fontSize: 12, color: '#94a3b8',

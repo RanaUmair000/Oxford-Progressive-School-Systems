@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Users, BarChart3, FileText, Search, Mail, Filter, Download, ChevronLeft, ChevronRight, X, Check, AlertCircle, TrendingUp, TrendingDown, Phone  } from 'lucide-react';
 import axios from 'axios';
 import { attendanceAPI } from './api_service';
+const token = localStorage.getItem('token');
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -89,8 +90,13 @@ export default function AttendanceManagementSystem() {
       setLoading(true);
 
       const res = await axios.get(`${apiUrl}/api/students`, {
-        params: classId ? { classId } : {}
+        params: classId ? { classId } : {},
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
       });
+      
       setMockStudents(res.data.students);
       setTotalStudents(res.data.totalStudents);
 

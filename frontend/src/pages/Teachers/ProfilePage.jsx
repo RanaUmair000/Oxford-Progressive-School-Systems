@@ -1,20 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getProfile, updateProfile } from '../../services/teacherApi';
 
-const inputStyle = {
-  width: '100%', padding: '9px 12px', borderRadius: 8,
-  border: '1px solid #E2E8F0', fontSize: 14, color: '#1C2434',
-  background: '#F7F9FC', outline: 'none', boxSizing: 'border-box'
-};
-
-const labelStyle = {
-  display: 'block', fontSize: 12, fontWeight: 600, color: '#64748b', marginBottom: 6
-};
-
-const readonlyStyle = {
-  ...inputStyle, background: '#F1F5F9', color: '#94a3b8', cursor: 'not-allowed'
-};
-
 export default function ProfilePage() {
   const [profile, setProfile] = useState(null);
   const [form, setForm] = useState({
@@ -24,7 +10,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
-
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
@@ -32,7 +17,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     getProfile()
-      .then(res => {
+      .then((res) => {
         const p = res.data.data;
         setProfile(p);
         setForm({
@@ -54,6 +39,8 @@ export default function ProfilePage() {
     try {
       await updateProfile(form);
       showToast('Profile updated successfully!');
+      // Update local profile directly to reflect new data just saved
+      setProfile((prev) => ({ ...prev, ...form }));
     } catch (err) {
       showToast(err.response?.data?.message || 'Failed to update', 'error');
     } finally {
@@ -61,177 +48,266 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) return (
-    <div style={{ padding: 60, textAlign: 'center', color: '#94a3b8' }}>Loading profile...</div>
-  );
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen text-gray-500">
+        Loading profile...
+      </div>
+    );
+  }
 
   if (!profile) return null;
 
   const initials = `${profile.firstName?.[0] || ''}${profile.lastName?.[0] || ''}`.toUpperCase();
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const avatarUrl = profile.profilePic ? `${apiUrl}/${profile.profilePic}` : null;
 
   return (
-    <div style={{ padding: 24, fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div className="mx-auto max-w-242.5">
       {toast && (
-        <div style={{
-          position: 'fixed', top: 20, right: 20, zIndex: 999,
-          padding: '12px 20px', borderRadius: 10,
-          background: toast.type === 'error' ? '#FEE2E2' : '#D1FAE5',
-          color: toast.type === 'error' ? '#EF4444' : '#10B981',
-          fontWeight: 600, boxShadow: '0 4px 12px rgba(0,0,0,0.12)'
-        }}>
-          {toast.type === 'error' ? '❌' : '✅'} {toast.msg}
+        <div
+          className={`fixed top-5 right-5 z-50 flex items-center w-full max-w-xs p-4 rounded-lg shadow ${toast.type === 'error'
+            ? 'bg-danger text-white'
+            : 'bg-success text-white'
+            }`}
+          role="alert"
+        >
+          <div className="text-sm font-normal ml-3">{toast.msg}</div>
         </div>
       )}
 
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C2434', margin: 0 }}>My Profile</h1>
-        <p style={{ color: '#64748b', margin: '4px 0 0' }}>View and update your personal information</p>
+      {/* Header Section */}
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="text-title-md2 font-semibold text-black dark:text-white">
+          Teacher Profile
+        </h2>
+        <nav>
+          <ol className="flex items-center gap-2">
+            <li>
+              <a className="font-medium" href="/">
+                Dashboard /
+              </a>
+            </li>
+            <li className="font-medium text-primary">Profile</li>
+          </ol>
+        </nav>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-        {/* Profile Card */}
-        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+        {/* Left Column: Avatar and Info Card */}
+        <div className="col-span-1 border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark rounded-sm">
           {/* Banner */}
-          <div style={{
-            height: 80, background: 'linear-gradient(135deg, #3C50E0, #80CAEE)'
-          }} />
+          <div className="h-32 w-full rounded-tl-sm rounded-tr-sm bg-gradient-to-r from-primary to-secondary relative">
+            <div className="absolute top-4 right-4">
+              <span className={`inline-flex rounded-full py-1 px-3 text-sm font-medium text-white ${profile.status === 'Active' ? 'bg-success' : 'bg-danger'}`}>
+                {profile.status}
+              </span>
+            </div>
+          </div>
 
-          <div style={{ padding: '0 24px 24px', marginTop: -36 }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: '50%',
-              background: '#3C50E0', border: '4px solid #fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 24, fontWeight: 700, color: '#fff', marginBottom: 12
-            }}>
-              {profile.profilePic
-                ? <img src={profile.profilePic} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-                : initials
-              }
+          <div className="px-6 pb-6 text-center">
+            {/* Avatar */}
+            <div className="relative z-30 mx-auto -mt-16 h-30 w-30 rounded-full bg-white/20 p-1 backdrop-blur sm:h-32 sm:w-32 sm:p-2 border-4 border-white dark:border-strokedark">
+              <div className="relative drop-shadow-2 w-full h-full rounded-full bg-meta-4 flex items-center justify-center text-white text-3xl font-bold uppercase overflow-hidden">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="profile" className="w-full h-full object-cover" />
+                ) : (
+                  initials
+                )}
+              </div>
             </div>
 
-            <div style={{ fontWeight: 700, fontSize: 18, color: '#1C2434' }}>
-              {profile.firstName} {profile.lastName}
-            </div>
-            <div style={{ color: '#64748b', fontSize: 13, marginBottom: 4 }}>{profile.email}</div>
-            <div style={{ color: '#64748b', fontSize: 13 }}>{profile.specialization || 'Teacher'}</div>
+            <div className="mt-4">
+              <h3 className="mb-1 text-2xl font-semibold text-black dark:text-white">
+                {profile.firstName} {profile.lastName}
+              </h3>
+              <p className="font-medium text-graydark dark:text-gray-400">
+                {profile.specialization || 'Teacher'}
+              </p>
 
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {[
-                { label: 'Employee Code', val: profile.employeeCode || '—' },
-                { label: 'Employment Type', val: profile.employmentType },
-                { label: 'Gender', val: profile.gender || '—' },
-                { label: 'Status', val: profile.status },
-              ].map(item => (
-                <div key={item.label} style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  padding: '8px 0', borderBottom: '1px solid #EFF4FB'
-                }}>
-                  <span style={{ color: '#94a3b8', fontSize: 12 }}>{item.label}</span>
-                  <span style={{
-                    fontSize: 13, fontWeight: 600, color: item.label === 'Status'
-                      ? (profile.status === 'Active' ? '#10B981' : '#EF4444')
-                      : '#1C2434'
-                  }}>{item.val}</span>
+              <div className="mt-4 text-left grid grid-cols-1 gap-2 border-t border-stroke pt-4 dark:border-strokedark">
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Employee Code</span>
+                  <span className="text-sm font-bold text-black dark:text-white">{profile.employeeCode || '—'}</span>
                 </div>
-              ))}
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Gender</span>
+                  <span className="text-sm font-bold text-black dark:text-white">{profile.gender || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Employment</span>
+                  <span className="text-sm font-bold text-black dark:text-white">{profile.employmentType || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm font-medium">Joined</span>
+                  <span className="text-sm font-bold text-black dark:text-white">{profile.hireDate ? new Date(profile.hireDate).toLocaleDateString() : '—'}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Edit Form */}
-        <form onSubmit={handleSave}>
-          {/* Readonly Info */}
-          <div style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0',
-            padding: 24, marginBottom: 16
-          }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C2434', margin: '0 0 16px', textTransform: 'uppercase', letterSpacing: '.5px' }}>
-              Account Information
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>FIRST NAME</label>
-                <input style={readonlyStyle} value={profile.firstName} readOnly />
-              </div>
-              <div>
-                <label style={labelStyle}>LAST NAME</label>
-                <input style={readonlyStyle} value={profile.lastName} readOnly />
-              </div>
-              <div>
-                <label style={labelStyle}>EMAIL</label>
-                <input style={readonlyStyle} value={profile.email} readOnly />
-              </div>
-              <div>
-                <label style={labelStyle}>HIRE DATE</label>
-                <input style={readonlyStyle}
-                  value={profile.hireDate ? new Date(profile.hireDate).toLocaleDateString() : '—'}
-                  readOnly />
+        {/* Right Column: Edit Forms */}
+        <div className="col-span-1 md:col-span-2">
+
+          {/* Readonly Core Info block */}
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark mb-6">
+            <div className="border-b border-stroke py-4 px-7 dark:border-strokedark flex justify-between items-center">
+              <h3 className="font-medium text-black dark:text-white">
+                Core Identity
+              </h3>
+              <span className="text-sm text-gray-500">Contact Admin to Change</span>
+            </div>
+            <div className="p-7">
+              <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.firstName}
+                    readOnly
+                    className="w-full rounded border border-stroke bg-gray disabled cursor-not-allowed py-2 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.lastName}
+                    readOnly
+                    className="w-full rounded border border-stroke bg-gray disabled cursor-not-allowed py-2 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={profile.email}
+                    readOnly
+                    className="w-full rounded border border-stroke bg-gray disabled cursor-not-allowed py-2 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                  />
+                </div>
               </div>
             </div>
-            <p style={{ color: '#94a3b8', fontSize: 12, margin: '12px 0 0' }}>
-              ℹ️ Contact admin to update name, email, or employee code
-            </p>
           </div>
 
-          {/* Editable Info */}
-          <div style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0',
-            padding: 24
-          }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, color: '#1C2434', margin: '0 0 16px', textTransform: 'uppercase', letterSpacing: '.5px' }}>
-              Editable Details
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>PHONE</label>
-                <input style={inputStyle} value={form.phone}
-                  onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                  placeholder="+92 300 1234567" />
-              </div>
-              <div>
-                <label style={labelStyle}>QUALIFICATION</label>
-                <input style={inputStyle} value={form.qualification}
-                  onChange={e => setForm(p => ({ ...p, qualification: e.target.value }))}
-                  placeholder="e.g., M.Sc Computer Science" />
-              </div>
-              <div>
-                <label style={labelStyle}>SPECIALIZATION</label>
-                <input style={inputStyle} value={form.specialization}
-                  onChange={e => setForm(p => ({ ...p, specialization: e.target.value }))}
-                  placeholder="e.g., Mathematics" />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>ADDRESS</label>
-                <input style={inputStyle} value={form.address}
-                  onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
-                  placeholder="Full address" />
-              </div>
-              <div>
-                <label style={labelStyle}>EMERGENCY CONTACT NAME</label>
-                <input style={inputStyle} value={form.emergencyContactName}
-                  onChange={e => setForm(p => ({ ...p, emergencyContactName: e.target.value }))}
-                  placeholder="Contact person name" />
-              </div>
-              <div>
-                <label style={labelStyle}>EMERGENCY CONTACT PHONE</label>
-                <input style={inputStyle} value={form.emergencyContactPhone}
-                  onChange={e => setForm(p => ({ ...p, emergencyContactPhone: e.target.value }))}
-                  placeholder="+92 300 1234567" />
-              </div>
+          {/* Editable settings */}
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+            <div className="border-b border-stroke py-4 px-7 dark:border-strokedark">
+              <h3 className="font-medium text-black dark:text-white">
+                Personal Information
+              </h3>
             </div>
 
-            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-              <button type="submit" disabled={saving} style={{
-                padding: '10px 28px', borderRadius: 8, border: 'none',
-                background: saving ? '#94a3b8' : '#3C50E0',
-                color: '#fff', fontWeight: 700, fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer'
-              }}>
-                {saving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </div>
+            <form onSubmit={handleSave}>
+              <div className="p-7">
+                <div className="mb-5.5 grid grid-cols-1 sm:grid-cols-2 gap-5.5">
+                  <div>
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Phone Number
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded border border-stroke bg-white py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                      placeholder="+92 300 1234567"
+                      value={form.phone}
+                      onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Qualification
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded border border-stroke bg-white py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                      placeholder="M.Sc. Mathematics"
+                      value={form.qualification}
+                      onChange={e => setForm(p => ({ ...p, qualification: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="mb-5.5">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Specialization
+                  </label>
+                  <input
+                    type="text"
+                    className="w-full rounded border border-stroke bg-white py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                    placeholder="E.g., Quantum Physics"
+                    value={form.specialization}
+                    onChange={e => setForm(p => ({ ...p, specialization: e.target.value }))}
+                  />
+                </div>
+
+                <div className="mb-5.5">
+                  <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                    Current Address
+                  </label>
+                  <textarea
+                    rows="3"
+                    placeholder="Enter your full residential address"
+                    className="w-full rounded border border-stroke bg-white py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                    value={form.address}
+                    onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
+                  ></textarea>
+                </div>
+
+                <h4 className="mt-8 mb-4 block text-sm font-bold uppercase tracking-wider text-black dark:text-white border-b border-stroke pb-2 dark:border-strokedark">
+                  Emergency Contact
+                </h4>
+
+                <div className="mb-5.5 grid grid-cols-1 sm:grid-cols-2 gap-5.5">
+                  <div>
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded border border-stroke bg-white py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                      placeholder="E.g., John Doe"
+                      value={form.emergencyContactName}
+                      onChange={e => setForm(p => ({ ...p, emergencyContactName: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-3 block text-sm font-medium text-black dark:text-white">
+                      Contact Phone
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full rounded border border-stroke bg-white py-3 px-4.5 text-black focus:border-primary focus-visible:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white dark:focus:border-primary"
+                      placeholder="+92 300 7654321"
+                      value={form.emergencyContactPhone}
+                      onChange={e => setForm(p => ({ ...p, emergencyContactPhone: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-4.5 pt-4">
+                  <button
+                    className="flex justify-center rounded bg-primary py-2 px-6 font-medium text-gray hover:bg-opacity-90 disabled:opacity-50"
+                    type="submit"
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving...' : 'Update Details'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
-        </form>
+
+        </div>
       </div>
     </div>
   );

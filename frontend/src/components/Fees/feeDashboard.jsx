@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { FiDollarSign, FiUsers, FiCalendar, FiSearch, FiFileText, FiTrendingUp } from 'react-icons/fi';
 import Modal from '../Modal/modal';
 import GenerateAnnualModal from './Modals/generateAnnualModal';
-import GenerateMonthlyModal from './Modals/GenerateMonthlyModal';
-import CreateStudentInvoiceModal from './Modals/CreateStudentInvoiceModal';
-import CreateEventInvoiceModal from './Modals/CreateEventInvoiceModal';
-import CheckFeeStatusModal from './Modals/CheckFeeStatusModal';
+import GenerateMonthlyModal from './Modals/generateMonthlyModal';
+import CreateStudentInvoiceModal from './Modals/createStudentInvoiceModal';
+import CreateEventInvoiceModal from './Modals/createEventInvoiceModal';
+import CheckFeeStatusModal from './Modals/checkFeeStatusModal';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -15,17 +15,19 @@ const FeeDashboard = () => {
   const [openModal, setOpenModal] = useState(null);
   const navigate = useNavigate();
 
+  const [period, setPeriod] = useState('all');
   const [stats, setStats] = useState({
     totalInvoices: 0,
     pendingAmount: 0,
-    collectedToday: 0,
+    collectedInPeriod: 0,
+    totalRevenue: 0,
     overdueCount: 0
   });
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await axios.get(`${apiUrl}/api/fees/invoices/dashboard`);
+        const res = await axios.get(`${apiUrl}/api/fees/invoices/dashboard?period=${period}`);
         setStats(res.data.data);
       } catch (error) {
         console.error('Failed to load fee stats', error);
@@ -33,7 +35,7 @@ const FeeDashboard = () => {
     };
 
     fetchStats();
-  }, []);
+  }, [period]);
 
   const actionCards = [
     {
@@ -114,16 +116,31 @@ const FeeDashboard = () => {
     <>
       <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-10 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5">
         {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-black dark:text-white mb-2">
-            Fee Management System
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Manage student fees, generate invoices, and track payments
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+          <div>
+            <h2 className="text-3xl font-bold text-black dark:text-white mb-2">
+              Fee Management System
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Manage student fees, generate invoices, and track payments
+            </p>
+          </div>
+          <div className="mt-4 sm:mt-0">
+            <select
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="rounded border border-stroke bg-gray px-4 py-2 text-black focus:border-primary focus:outline-none dark:border-strokedark dark:bg-meta-4 dark:text-white"
+            >
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month">This Month</option>
+              <option value="year">This Year</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
         </div>
 
-        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+        <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5 mb-6">
           <div className="rounded-lg border border-stroke bg-gray-50 dark:border-strokedark dark:bg-meta-4 p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -137,8 +154,18 @@ const FeeDashboard = () => {
           <div className="rounded-lg border border-stroke bg-gray-50 dark:border-strokedark dark:bg-meta-4 p-4">
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Revenue</p>
+                <p className="text-2xl font-bold text-black dark:text-white mt-1">Rs {stats.totalRevenue?.toLocaleString() || 0}</p>
+              </div>
+              <FiDollarSign className="text-green-500" size={32} />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-stroke bg-gray-50 dark:border-strokedark dark:bg-meta-4 p-4">
+            <div className="flex items-center justify-between">
+              <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Pending Amount</p>
-                <p className="text-2xl font-bold text-black dark:text-white mt-1">Rs {stats.pendingAmount.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-black dark:text-white mt-1">Rs {stats.pendingAmount?.toLocaleString() || 0}</p>
               </div>
               <FiDollarSign className="text-orange-500" size={32} />
             </div>
@@ -147,10 +174,10 @@ const FeeDashboard = () => {
           <div className="rounded-lg border border-stroke bg-gray-50 dark:border-strokedark dark:bg-meta-4 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Collected Today</p>
-                <p className="text-2xl font-bold text-black dark:text-white mt-1">Rs {stats.collectedToday.toLocaleString()}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Collected</p>
+                <p className="text-2xl font-bold text-black dark:text-white mt-1">Rs {stats.collectedInPeriod?.toLocaleString() || 0}</p>
               </div>
-              <FiTrendingUp className="text-green-500" size={32} />
+              <FiTrendingUp className="text-teal-500" size={32} />
             </div>
           </div>
 

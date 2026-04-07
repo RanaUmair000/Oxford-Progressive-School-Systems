@@ -46,6 +46,7 @@ const StudentModal = ({ onClose, student }) => {
         email: "",
         studentId: "",
         rollNumber: "",
+        password: "",
         class: "",
         fee: "",
         registrationFee: "",
@@ -70,6 +71,7 @@ const StudentModal = ({ onClose, student }) => {
                 email: student.email || "",
                 studentId: student.studentId || "",
                 rollNumber: student.rollNumber || "",
+                password: student.password || "",
                 class: student.class?._id || student.class || "",
                 academicYear: student.academicYear || "",
                 status: student.status || "Active",
@@ -121,13 +123,21 @@ const StudentModal = ({ onClose, student }) => {
             : `${apiUrl}/api/students`;
         const method = student ? "PUT" : "POST";
         try {
-            await fetch(url, {
+            const res = await fetch(url, {
                 method,
                 body: data,
                 headers: {
                     "Authorization": `Bearer ${token}`,
                 }
             });
+
+            const json = await res.json();
+
+            if (!res.ok) {
+                alert(json.message || "Something went wrong.");
+                return;
+            }
+
             onClose();
             window.location.href = "/students";
         } catch (err) {
@@ -398,7 +408,7 @@ const StudentModal = ({ onClose, student }) => {
                         </h3>
 
                         <div className="mb-4.5 flex flex-col gap-6 xl:flex-row">
-                            <div className="w-full xl:w-1/2">
+                            <div className="w-full xl:w-1/3">
                                 <label className="mb-2.5 block text-black dark:text-white">
                                     Admission Number / Student ID <span className="text-meta-1">*</span>
                                 </label>
@@ -411,7 +421,7 @@ const StudentModal = ({ onClose, student }) => {
                                 />
                             </div>
 
-                            <div className="w-full xl:w-1/2">
+                            <div className="w-full xl:w-1/3">
                                 <label className="mb-2.5 block text-black dark:text-white">
                                     Roll Number <span className="text-meta-1">*</span>
                                 </label>
@@ -419,6 +429,19 @@ const StudentModal = ({ onClose, student }) => {
                                     type="text"
                                     name="rollNumber"          // change this to the actual field name
                                     value={formData.rollNumber}
+                                    onChange={handleChange}
+                                    className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                                />
+                            </div>
+
+                            <div className="w-full xl:w-1/3">
+                                <label className="mb-2.5 block text-black dark:text-white">
+                                    Password <span className="text-meta-1">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="password"          // change this to the actual field name
+                                    value={formData.password}
                                     onChange={handleChange}
                                     className="w-full rounded border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                                 />

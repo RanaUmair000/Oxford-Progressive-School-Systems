@@ -1,5 +1,5 @@
 import { ApexOptions } from 'apexcharts';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
 const options: ApexOptions = {
@@ -115,6 +115,15 @@ const options: ApexOptions = {
   },
 };
 
+interface ChartOneProps {
+  series?: {
+    name: string;
+    data: number[];
+  }[];
+  categories?: string[];
+}
+
+
 interface ChartOneState {
   series: {
     name: string;
@@ -122,14 +131,13 @@ interface ChartOneState {
   }[];
 }
 
-const ChartOne: React.FC = () => {
+const ChartOne: React.FC<ChartOneProps> = ({ series, categories }) => {
   const [state, setState] = useState<ChartOneState>({
-    series: [
+    series: series || [
       {
         name: 'Product One',
         data: [23, 11, 22, 27, 13, 22, 37, 21, 44, 22, 30, 45],
       },
-
       {
         name: 'Product Two',
         data: [30, 25, 36, 30, 45, 35, 64, 52, 59, 36, 39, 51],
@@ -137,12 +145,19 @@ const ChartOne: React.FC = () => {
     ],
   });
 
-  const handleReset = () => {
-    setState((prevState) => ({
-      ...prevState,
-    }));
+  useEffect(() => {
+    if (series) {
+      setState({ series });
+    }
+  }, [series]);
+
+  const currentOptions = {
+    ...options,
+    xaxis: {
+      ...options.xaxis,
+      categories: categories || options.xaxis?.categories,
+    }
   };
-  handleReset;
 
   return (
     <div className="col-span-12 rounded-sm border border-stroke bg-white px-5 pt-7.5 pb-5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:col-span-8">
@@ -185,7 +200,7 @@ const ChartOne: React.FC = () => {
       <div>
         <div id="chartOne" className="-ml-5">
           <ReactApexChart
-            options={options}
+            options={currentOptions as ApexOptions}
             series={state.series}
             type="area"
             height={350}

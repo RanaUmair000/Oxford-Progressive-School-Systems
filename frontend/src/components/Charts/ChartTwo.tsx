@@ -1,5 +1,5 @@
 import { ApexOptions } from 'apexcharts';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 
 const options: ApexOptions = {
@@ -62,6 +62,14 @@ const options: ApexOptions = {
   },
 };
 
+export interface ChartTwoProps {
+  series?: {
+    name: string;
+    data: number[];
+  }[];
+  categories?: string[];
+}
+
 interface ChartTwoState {
   series: {
     name: string;
@@ -69,9 +77,9 @@ interface ChartTwoState {
   }[];
 }
 
-const ChartTwo: React.FC = () => {
+const ChartTwo: React.FC<ChartTwoProps> = ({ series, categories }) => {
   const [state, setState] = useState<ChartTwoState>({
-    series: [
+    series: series || [
       {
         name: 'Sales',
         data: [44, 55, 41, 67, 22, 43, 65],
@@ -82,20 +90,28 @@ const ChartTwo: React.FC = () => {
       },
     ],
   });
-  
-  const handleReset = () => {
-    setState((prevState) => ({
-      ...prevState,
-    }));
+
+  useEffect(() => {
+    if (series) {
+      setState({ series });
+    }
+  }, [series]);
+
+  const currentOptions = {
+    ...options,
+    xaxis: {
+      ...options.xaxis,
+      categories: categories || options.xaxis?.categories,
+    }
   };
-  handleReset;  
+
 
   return (
     <div className="col-span-12 rounded-sm border border-stroke bg-white p-7.5 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
       <div className="mb-4 justify-between gap-4 sm:flex">
         <div>
           <h4 className="text-xl font-semibold text-black dark:text-white">
-            Profit this week
+            Revenue this week
           </h4>
         </div>
         <div>
@@ -135,7 +151,7 @@ const ChartTwo: React.FC = () => {
       <div>
         <div id="chartTwo" className="-ml-5 -mb-9">
           <ReactApexChart
-            options={options}
+            options={currentOptions as ApexOptions}
             series={state.series}
             type="bar"
             height={350}

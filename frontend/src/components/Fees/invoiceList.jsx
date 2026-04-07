@@ -4,7 +4,7 @@ import { getInvoices, deleteInvoice, formatCurrency, formatDate, getStatusColor,
 import Modal from '../Modal/modal';
 import InvoiceDetailsModal from './Modals/invoiceDetailsModal';
 import SubmitPaymentModal from './Modals/submitPaymentModal';
-import { InvoicePrintButton } from './InvoicePrintView';
+import { InvoicePrintButton } from './invoicePrintView';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
